@@ -2,10 +2,13 @@
 # Usage:
 #   - docker build  --tag 'pdflab' .
 #   - docker run --name pdflab -it pdflab bash
-#       - time python pdf_lab.py
+#       - python pdf_lab.py
 # """
+import time
+
 import pdftotext
 import pymupdf4llm
+import pymupdf
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -15,6 +18,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 
 class PdfToTextLab():
     def convert(self, fname):
+        print("\nConvert using pdftotext")
         pdf_name = f'{fname}.pdf'
         with open(pdf_name, "rb") as f:
             result_pages = []
@@ -36,8 +40,12 @@ class PdfToTextLab():
 
 class PymuPdf4LLMLab():
     def convert(self, fname):
+        print("\nConvert using pymupdf4llm")
         pdf_name = f'{fname}.pdf'
-        md_text = pymupdf4llm.to_markdown(pdf_name)
+        doc=pymupdf.open(pdf_name)
+        hdr=pymupdf4llm.IdentifyHeaders(doc)
+        print(hdr.header_id)
+        md_text = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr)
 
         result_name = f'{fname}-pymupdf4llm.md'
         out_file = open(result_name, 'w')
@@ -46,6 +54,7 @@ class PymuPdf4LLMLab():
 
 class MarkerLab():
     def convert(self, fname):
+        print("\nConvert using marker")
         pdf_name = f'{fname}.pdf'
         converter = PdfConverter(artifact_dict=create_model_dict())
         rendered = converter(pdf_name)
@@ -60,7 +69,7 @@ class DoclingLab():
     def convert(self, fname, use_tesseract = False):
         pdf_name = f'{fname}.pdf'
         if use_tesseract:
-            print("Using tesseract ocr")
+            print("\nConvert using docling with tesseract ocr")
             pipeline_options = PdfPipelineOptions()
             pipeline_options.do_ocr=True
             pipeline_options.ocr_options = TesseractOcrOptions()
@@ -69,11 +78,14 @@ class DoclingLab():
                     InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
                 }
             )
+            result_name = f'{fname}-docling-tesseract.md'
         else:
+            print("\nConvert using docling with easyocr")
             doc_converter = DocumentConverter()
+            result_name = f'{fname}-docling.md'
+
         result = doc_converter.convert(pdf_name)
 
-        result_name = f'{fname}-docling-tesseract.md'
         out_file = open(result_name, 'w')
         out_file.write(result.document.export_to_markdown())
         out_file.close()
@@ -82,10 +94,27 @@ class DoclingLab():
 
 fname1 = 'motie'
 fname2 = 'besluitenlijst'
-fname3 = 'example1'
+fname3 = 'emmen_rekenkamercommissie'
+fname4 = 'overijssel_jaarstukken_2023'
 
-# lab = PdfToTextLab()
-# lab = PymuPdf4LLMLab()
-# lab = MarkerLab()
-lab = DoclingLab()
-lab.convert(fname1)
+fname = fname1
+
+current_time = time.process_time()
+PdfToTextLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+PymuPdf4LLMLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+MarkerLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+DoclingLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+DoclingLab().convert(fname, True)
+print(f"Took {time.process_time() - current_time} seconds")
