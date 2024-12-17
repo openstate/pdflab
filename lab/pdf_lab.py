@@ -15,6 +15,8 @@ from marker.output import text_from_rendered
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from unstructured.partition.pdf import partition_pdf
+from unstructured.documents.elements import Title, Text, NarrativeText
 
 class PdfToTextLab():
     def convert(self, fname):
@@ -90,8 +92,41 @@ class DoclingLab():
         out_file.write(result.document.export_to_markdown())
         out_file.close()
 
+class UnstructuredLab():
+    def convert(self, fname):
+        print("\nConvert using unstructured")
+        pdf_name = f'{fname}.pdf'
+        elements = partition_pdf(pdf_name, strategy="hi_res")
 
+        # unstructured currently does not have a markdown output option
+        # Apart from that, tables are not parsed correctly.
+        # convert_to_markdown was started to output markdown, but wasn't finished
+        result_name = f'{fname}-unstructured.md'
+        markdown_content = self.convert_to_markdown(elements)
+        out_file = open(result_name, 'w')
+        out_file.write(markdown_content)
+        out_file.close()
 
+    def convert_to_markdown(self, elements):
+        data = [element.to_dict() for element in elements]
+        markdown = ""
+        
+        for item in data:
+            print(item)
+            element_type = item['type']
+            text = item['text']
+            
+            if element_type == 'Title':
+                markdown += f"# {text}\n\n"
+            elif element_type == 'Text':
+                markdown += f"{text}\n\n"
+            elif element_type == 'NarrativeText':
+                markdown += f"{text}\n\n"
+            else:
+                print(f'Unknown element type: {item["type"]}')    
+            
+        return markdown.strip()
+    
 fname1 = 'motie'
 fname2 = 'besluitenlijst'
 fname3 = 'emmen_rekenkamercommissie'
@@ -118,3 +153,7 @@ print(f"Took {time.process_time() - current_time} seconds")
 current_time = time.process_time()
 DoclingLab().convert(fname, True)
 print(f"Took {time.process_time() - current_time} seconds")
+
+# current_time = time.process_time()
+# UnstructuredLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
