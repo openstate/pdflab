@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y build-essential libpoppler-cpp-dev \
         poppler-utils
 
 RUN pip install --no-cache-dir pdftotext==2.1.4 pymupdf4llm==0.0.17 pymupdf==1.25.1 opencv-python tesserocr
+RUN pip install --no-cache-dir PyPDF2==3.0.1
 # numpy required before installing torch
 RUN pip install --no-cache-dir numpy==2.1.1
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu

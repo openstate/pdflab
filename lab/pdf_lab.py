@@ -9,6 +9,8 @@ import time
 import pdftotext
 import pymupdf4llm
 import pymupdf
+from PyPDF2 import PdfReader
+from PyPDF2.errors import PdfReadError
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -40,18 +42,48 @@ class PdfToTextLab():
                 out_file.write(page)
             out_file.close()
 
-class PymuPdf4LLMLab():
+class PyPDF2Lab():
     def convert(self, fname):
-        print("\nConvert using pymupdf4llm")
+        print("\nConvert using PyPDF2")
+        pdf_name = f'{fname}.pdf'
+        with open(pdf_name, "rb") as f:
+            try:
+                reader = PdfReader(f)
+                text = ' '.join([p.extract_text() for p in reader.pages])
+            except PdfReadError as e:
+                print(str(e))
+
+
+            print("Processed %i pages" % len(reader.pages))
+
+            result_name = f'{fname}-pypdf2.md'
+            out_file = open(result_name, 'w')
+            out_file.write(text)
+            out_file.close()
+
+class PymuPdf4LLMLab():
+    def convert(self, fname, use_tesseract = False):
         pdf_name = f'{fname}.pdf'
         doc=pymupdf.open(pdf_name)
         hdr=pymupdf4llm.IdentifyHeaders(doc)
-        print(hdr.header_id)
-        md_text = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr)
+        if use_tesseract:
+            print("\nConvert using pymupdf4llm with tesseract ocr")
+            md_text = []
+            for page in doc:
+                pixmap = page.get_pixmap(dpi=300)
+                doc=pymupdf.open("pdf", pixmap.pdfocr_tobytes(language='nld'))
 
-        result_name = f'{fname}-pymupdf4llm.md'
+                md_text.append(pymupdf4llm.to_markdown(doc, hdr_info=hdr))
+            result_name = f'{fname}-pymupdf4llm-tesseract.md'
+        else:
+            print("\nConvert using pymupdf4llm")
+            md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=False)
+            md_text = [chunk['text'] for chunk in md_chunks]
+            result_name = f'{fname}-pymupdf4llm.md'
+
         out_file = open(result_name, 'w')
-        out_file.write(md_text)
+        for page in md_text:
+            out_file.write(page)
         out_file.close()
 
 class MarkerLab():
@@ -131,8 +163,10 @@ fname1 = 'motie'
 fname2 = 'besluitenlijst'
 fname3 = 'emmen_rekenkamercommissie'
 fname4 = 'overijssel_jaarstukken_2023'
+fname5 = 'toezeggingen_commissie_bme'
+fname6 = 'besluitenlijst-ministerraad-20250110'
 
-fname = fname1
+fname = fname6
 
 current_time = time.process_time()
 PdfToTextLab().convert(fname)
@@ -143,16 +177,20 @@ PymuPdf4LLMLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
-MarkerLab().convert(fname)
+PyPDF2Lab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-DoclingLab().convert(fname)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# MarkerLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-DoclingLab().convert(fname, True)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# DoclingLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
+
+# current_time = time.process_time()
+# DoclingLab().convert(fname, True)
+# print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
 # UnstructuredLab().convert(fname)
