@@ -9,8 +9,8 @@ import time
 import pdftotext
 import pymupdf4llm
 import pymupdf
-from PyPDF2 import PdfReader
-from PyPDF2.errors import PdfReadError
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -42,9 +42,9 @@ class PdfToTextLab():
                 out_file.write(page)
             out_file.close()
 
-class PyPDF2Lab():
+class PyPdfLab():
     def convert(self, fname):
-        print("\nConvert using PyPDF2")
+        print("\nConvert using pypdf")
         pdf_name = f'{fname}.pdf'
         with open(pdf_name, "rb") as f:
             try:
@@ -56,7 +56,7 @@ class PyPDF2Lab():
 
             print("Processed %i pages" % len(reader.pages))
 
-            result_name = f'{fname}-pypdf2.md'
+            result_name = f'{fname}-pypdf.md'
             out_file = open(result_name, 'w')
             out_file.write(text)
             out_file.close()
@@ -177,7 +177,7 @@ PymuPdf4LLMLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
-PyPDF2Lab().convert(fname)
+PyPdfLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
