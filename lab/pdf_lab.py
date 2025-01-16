@@ -9,8 +9,12 @@ import time
 import pdftotext
 import pymupdf4llm
 import pymupdf
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
+# from PyPDF2 import PdfFileReader # 1.27.12
+# from PyPDF2.utils import PdfReadError # 1.27.12
+from PyPDF2 import PdfReader # 3.0.1
+from PyPDF2.errors import PdfReadError # 3.0.1
+# from pypdf import PdfReader # 5.1.0
+# from pypdf.errors import PdfReadError # 5.1.0
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -36,19 +40,21 @@ class PdfToTextLab():
 
             print("Processed %i pages" % i)
 
-            result_name = f'{fname}-pdftotext.md'
+            result_name = f'{fname}-pdftotext.txt'
             out_file = open(result_name, 'w')
             for page in result_pages:
                 out_file.write(page)
             out_file.close()
 
-class PyPdfLab():
+class PyPDF2Lab():
     def convert(self, fname):
-        print("\nConvert using pypdf")
+        print("\nConvert using PyPDF2")
         pdf_name = f'{fname}.pdf'
         with open(pdf_name, "rb") as f:
             try:
+                # reader = PdfFileReader(f) # 1.27.12
                 reader = PdfReader(f)
+                # text = ' '.join([p.extractText() for p in reader.pages]) # 1.27.12
                 text = ' '.join([p.extract_text() for p in reader.pages])
             except PdfReadError as e:
                 print(str(e))
@@ -56,10 +62,25 @@ class PyPdfLab():
 
             print("Processed %i pages" % len(reader.pages))
 
-            result_name = f'{fname}-pypdf.md'
+            result_name = f'{fname}-pypdf2.txt'
             out_file = open(result_name, 'w')
             out_file.write(text)
             out_file.close()
+
+class PymuPdfLab():
+    def convert(self, fname, use_tesseract = False):
+        print("\nConvert using pymupdf")
+        pdf_name = f'{fname}.pdf'
+        doc=pymupdf.open(pdf_name)
+        texts = []
+        for page in doc:
+            texts.append(page.get_text())
+
+        result_name = f'{fname}-pymupdf.txt'
+        out_file = open(result_name, 'w')
+        for page in texts:
+            out_file.write(page)
+        out_file.close()
 
 class PymuPdf4LLMLab():
     def convert(self, fname, use_tesseract = False):
@@ -165,11 +186,18 @@ fname3 = 'emmen_rekenkamercommissie'
 fname4 = 'overijssel_jaarstukken_2023'
 fname5 = 'toezeggingen_commissie_bme'
 fname6 = 'besluitenlijst-ministerraad-20250110'
+fname7 = 'Papendrecht-problem'
+fname8 = '1848-scan'
+fname9 = "Motie-528709"
 
-fname = fname6
+fname = fname9
 
 current_time = time.process_time()
 PdfToTextLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+PymuPdfLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
@@ -177,7 +205,7 @@ PymuPdf4LLMLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
-PyPdfLab().convert(fname)
+PyPDF2Lab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
