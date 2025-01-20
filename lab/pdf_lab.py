@@ -68,7 +68,7 @@ class PyPDF2Lab():
             out_file.close()
 
 class PymuPdfLab():
-    def convert(self, fname, use_tesseract = False):
+    def convert(self, fname):
         print("\nConvert using pymupdf")
         pdf_name = f'{fname}.pdf'
         doc=pymupdf.open(pdf_name)
@@ -189,8 +189,9 @@ fname6 = 'besluitenlijst-ministerraad-20250110'
 fname7 = 'Papendrecht-problem'
 fname8 = '1848-scan'
 fname9 = "Motie-528709"
+fname10 = "Beslisnota-met-handgeschreven-tekst"
 
-fname = fname9
+fname = fname10
 
 current_time = time.process_time()
 PdfToTextLab().convert(fname)
@@ -201,7 +202,7 @@ PymuPdfLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
-PymuPdf4LLMLab().convert(fname)
+PymuPdf4LLMLab().convert(fname, True)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
