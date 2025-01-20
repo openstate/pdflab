@@ -190,8 +190,9 @@ fname7 = 'Papendrecht-problem'
 fname8 = '1848-scan'
 fname9 = "Motie-528709"
 fname10 = "Beslisnota-met-handgeschreven-tekst"
+fname11 = "1848-notificatie-met-undefined-unicodes"
 
-fname = fname10
+fname = fname11
 
 current_time = time.process_time()
 PdfToTextLab().convert(fname)
@@ -202,7 +203,8 @@ PymuPdfLab().convert(fname)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
-PymuPdf4LLMLab().convert(fname, True)
+PymuPdf4LLMLab().convert(fname)
+# PymuPdf4LLMLab().convert(fname, True)
 print(f"Took {time.process_time() - current_time} seconds")
 
 current_time = time.process_time()
