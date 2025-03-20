@@ -5,6 +5,7 @@
 #       - python pdf_lab.py
 # """
 import time
+import subprocess
 
 import pdftotext
 import pymupdf4llm
@@ -55,7 +56,8 @@ class PyPDF2Lab():
                 # reader = PdfFileReader(f) # 1.27.12
                 reader = PdfReader(f)
                 # text = ' '.join([p.extractText() for p in reader.pages]) # 1.27.12
-                text = ' '.join([p.extract_text() for p in reader.pages])
+                # text = ' '.join([p.extract_text() for p in reader.pages])
+                text = [p.extract_text() for p in reader.pages]
             except PdfReadError as e:
                 print(str(e))
 
@@ -90,18 +92,38 @@ class PymuPdf4LLMLab():
         if use_tesseract:
             print("\nConvert using pymupdf4llm with tesseract ocr")
             md_text = []
-            for page in doc:
-                pixmap = page.get_pixmap(dpi=300)
+            for index, page in enumerate(doc):
+                print(f"parsing page {index}")
+                pixmap = page.get_pixmap(dpi=200)
                 doc=pymupdf.open("pdf", pixmap.pdfocr_tobytes(language='nld'))
 
-                md_text.append(pymupdf4llm.to_markdown(doc, hdr_info=hdr))
+                md_text.append(pymupdf4llm.to_markdown(doc, hdr_info=hdr, image_size_limit=0.1))
             result_name = f'{fname}-pymupdf4llm-tesseract.md'
         else:
             print("\nConvert using pymupdf4llm")
-            md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=False)
+            md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=False, image_size_limit=0.1)
             md_text = [chunk['text'] for chunk in md_chunks]
             result_name = f'{fname}-pymupdf4llm.md'
 
+        out_file = open(result_name, 'w')
+        for page in md_text:
+            out_file.write(page)
+        out_file.close()
+
+class PymuPdf4LLMUseTextpageOCRLab():
+    def convert(self, fname):
+        pdf_name = f'{fname}.pdf'
+        doc=pymupdf.open(pdf_name)
+
+        print("\nConvert using pymupdf4llm using get_textpage_ocr")
+        md_text = []
+        for index, page in enumerate(doc):
+            print(f"parsing page {index}")
+            text_page = page.get_textpage_ocr(flags=pymupdf.TEXTFLAGS_SEARCH, language='nld', full=False)
+            text = page.get_text(textpage=text_page)
+            md_text.append(text)
+
+        result_name = f'{fname}-pymupdf4llm-gettextpageocr.md'
         out_file = open(result_name, 'w')
         for page in md_text:
             out_file.write(page)
@@ -180,6 +202,27 @@ class UnstructuredLab():
             
         return markdown.strip()
     
+class OCRmyPDFLab():
+    def convert(self, fname):
+        print("\nConvert using OCRmyPDF")
+        pdf_name = f'{fname}.pdf'
+        out_file = f'{fname}-ocrmypdf.pdf'
+
+        command = [
+            'ocrmypdf',
+            '--redo-ocr',
+            '-l',
+            'nld',
+            pdf_name,
+            out_file
+        ]
+        result = subprocess.run(command, capture_output=True)
+        print(f"result code {result.returncode} {result.returncode.__class__.__name__}")
+        print(f"result stdout {result.stdout}")
+        print(f"result stderr {result.stderr}")
+
+
+
 fname1 = 'motie'
 fname2 = 'besluitenlijst'
 fname3 = 'emmen_rekenkamercommissie'
@@ -191,25 +234,31 @@ fname8 = '1848-scan'
 fname9 = "Motie-528709"
 fname10 = "Beslisnota-met-handgeschreven-tekst"
 fname11 = "1848-notificatie-met-undefined-unicodes"
+fname12 = "transporterror"
+fname13 = "notubiz_645542_2"
+fname14 = "almere_groot_bestand"
+fname15 = "almere_bundel_LARGE"
 
-fname = fname11
+fname = fname8
+fnames = [fname1, fname2, fname3, fname4, fname5, fname6, fname7, fname8, fname9, fname10, fname11, fname12, fname13, fname14, fname15]
 
-current_time = time.process_time()
-PdfToTextLab().convert(fname)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# PdfToTextLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-PymuPdfLab().convert(fname)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# PymuPdfLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-PymuPdf4LLMLab().convert(fname)
+# current_time = time.process_time()
+# PymuPdf4LLMLab().convert(fname)
 # PymuPdf4LLMLab().convert(fname, True)
-print(f"Took {time.process_time() - current_time} seconds")
+# PymuPdf4LLMUseTextpageOCRLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-PyPDF2Lab().convert(fname)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# PyPDF2Lab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
 # MarkerLab().convert(fname)
@@ -226,3 +275,7 @@ print(f"Took {time.process_time() - current_time} seconds")
 # current_time = time.process_time()
 # UnstructuredLab().convert(fname)
 # print(f"Took {time.process_time() - current_time} seconds")
+
+current_time = time.process_time()
+OCRmyPDFLab().convert(fname)
+print(f"Took {time.process_time() - current_time} seconds")
