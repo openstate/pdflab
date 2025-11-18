@@ -6,16 +6,18 @@
 # """
 import time
 import subprocess
+import sys
 
 import pdftotext
+import pymupdf.layout # NOTE: by importing pymupdf.layout before pymupdf4llm this new way of parsing is used
 import pymupdf4llm
 import pymupdf
 # from PyPDF2 import PdfFileReader # 1.27.12
 # from PyPDF2.utils import PdfReadError # 1.27.12
 from PyPDF2 import PdfReader # 3.0.1
 from PyPDF2.errors import PdfReadError # 3.0.1
-# from pypdf import PdfReader # 5.1.0
-# from pypdf.errors import PdfReadError # 5.1.0
+from pypdf import PdfReader as PypdfPdfReader # 5.5.0
+from pypdf.errors import PyPdfError
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
@@ -66,7 +68,28 @@ class PyPDF2Lab():
 
             result_name = f'{fname}-pypdf2.txt'
             out_file = open(result_name, 'w')
-            out_file.write(text)
+            for page in text:
+                out_file.write(page)
+            out_file.close()
+
+class PyPDFLab():
+    def convert(self, fname):
+        print("\nConvert using PyPDF")
+        pdf_name = f'{fname}.pdf'
+        with open(pdf_name, "rb") as f:
+            try:
+                reader = PypdfPdfReader(f)
+                text = [p.extract_text() for p in reader.pages]
+            except PyPdfError as e:
+                print(str(e))
+
+
+            print("Processed %i pages" % len(reader.pages))
+
+            result_name = f'{fname}-pypdf.txt'
+            out_file = open(result_name, 'w')
+            for page in text:
+                out_file.write(page)
             out_file.close()
 
 class PymuPdfLab():
@@ -88,7 +111,7 @@ class PymuPdf4LLMLab():
     def convert(self, fname, use_tesseract = False):
         pdf_name = f'{fname}.pdf'
         doc=pymupdf.open(pdf_name)
-        hdr=pymupdf4llm.IdentifyHeaders(doc)
+        # hdr=pymupdf4llm.IdentifyHeaders(doc)
         if use_tesseract:
             print("\nConvert using pymupdf4llm with tesseract ocr")
             md_text = []
@@ -101,7 +124,13 @@ class PymuPdf4LLMLab():
             result_name = f'{fname}-pymupdf4llm-tesseract.md'
         else:
             print("\nConvert using pymupdf4llm")
-            md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=False, image_size_limit=0.1)
+            md_chunks = pymupdf4llm.to_markdown(doc)
+            # md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=False,
+            #                                     image_size_limit=0.1)
+            # md_chunks = pymupdf4llm.to_markdown(pdf_name, hdr_info=hdr, page_chunks=True, show_progress=True,
+            #                                     image_size_limit=0.1,
+            #                                     ignore_graphics=True, ignore_images=True)
+            
             md_text = [chunk['text'] for chunk in md_chunks]
             result_name = f'{fname}-pymupdf4llm.md'
 
@@ -109,6 +138,49 @@ class PymuPdf4LLMLab():
         for page in md_text:
             out_file.write(page)
         out_file.close()
+
+    # This method is used in open-raadinformatie to decide early on to use OCR or not
+    def force_ocr(self, fname):
+        pdf_name = f'{fname}.pdf'
+        textflags = ( # definition taken from pymupdf4llm
+            0
+            | 64 # mupdf.FZ_STEXT_CLIP
+            | 512 # mupdf.FZ_STEXT_ACCURATE_BBOXES
+            # | mupdf.FZ_STEXT_IGNORE_ACTUALTEXT
+            | 32768  # mupdf.FZ_STEXT_COLLECT_STYLES
+        )
+
+        try:
+            with pymupdf.open(pdf_name) as doc: 
+                i = 0
+                for page in doc.pages():
+                    i += 1
+                    print(f"Processing page {i}")
+                    textpage = page.get_textpage(flags=textflags, clip=page.rect)
+                    blocks = textpage.extractDICT()["blocks"]
+                    if len(blocks) > 150:
+                        return True
+        except Exception as e:
+            print(f"Generic error occurred when getting number of bboxes in pdf, error is {e}")
+
+        return False
+
+    def get_images(self, fname):
+        pdf_name = f'{fname}.pdf'
+        try:
+            rewrite = False
+            with pymupdf.open(pdf_name) as doc: 
+                for index, page in enumerate(doc.pages()):
+                    print(f"\npage {index}")
+                    number_of_images = len(page.get_images())
+                    if number_of_images > 100:
+                        print(f"PDF contains many image objects on a page ({number_of_images}), will be rewritten")
+                        rewrite = True
+                        break
+            print(f"\nRewrite: {rewrite}")
+        except:
+            print(f"Generic error occurred when checking number of pages in pdf, error class is {sys.exc_info()[0]}, {sys.exc_info()[1]}")
+            return
 
 class PymuPdf4LLMUseTextpageOCRLab():
     def convert(self, fname):
@@ -238,8 +310,19 @@ fname12 = "transporterror"
 fname13 = "notubiz_645542_2"
 fname14 = "almere_groot_bestand"
 fname15 = "almere_bundel_LARGE"
+fname16 = "amsterdam-2514pages"
+# fname17 = "amsterdam-2514pages-rewritten"
+fname18 = "index_error-rewritten"
+fname19 = "celery_worker_lost"
+fname20 = "1848_ic"
+fname21 = "ic_no_ocr"
+fname22 = "19 Geurgebiedsvisie 2013 - met bijlagen DEF"
+fname23 = "Bijlagenboek bij toelichting BP Korte Heistraat 2-4"
+fname24 = "7986398_02 Bijlage A bij ontwerp raadsbesluit"
+fname25 = "3.1 Besluitdocument_Renvooi Huidig-Definitief OP Bodem en basisstructuur"
+fname26 = "file" # BESTEMMINGSPLAN BOEKELERMEER NOORD
 
-fname = fname8
+fname = fname26
 fnames = [fname1, fname2, fname3, fname4, fname5, fname6, fname7, fname8, fname9, fname10, fname11, fname12, fname13, fname14, fname15]
 
 # current_time = time.process_time()
@@ -250,14 +333,21 @@ fnames = [fname1, fname2, fname3, fname4, fname5, fname6, fname7, fname8, fname9
 # PymuPdfLab().convert(fname)
 # print(f"Took {time.process_time() - current_time} seconds")
 
-# current_time = time.process_time()
+current_time = time.process_time()
 # PymuPdf4LLMLab().convert(fname)
-# PymuPdf4LLMLab().convert(fname, True)
+# force_ocr = PymuPdf4LLMLab().force_ocr(fname)
+# print(f"force_ocr: {force_ocr}")
+PymuPdf4LLMLab().convert(fname, False)
 # PymuPdf4LLMUseTextpageOCRLab().convert(fname)
-# print(f"Took {time.process_time() - current_time} seconds")
+# PymuPdf4LLMLab().get_images(fname)
+print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
 # PyPDF2Lab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
+
+# current_time = time.process_time()
+# PyPDFLab().convert(fname)
 # print(f"Took {time.process_time() - current_time} seconds")
 
 # current_time = time.process_time()
@@ -276,6 +366,6 @@ fnames = [fname1, fname2, fname3, fname4, fname5, fname6, fname7, fname8, fname9
 # UnstructuredLab().convert(fname)
 # print(f"Took {time.process_time() - current_time} seconds")
 
-current_time = time.process_time()
-OCRmyPDFLab().convert(fname)
-print(f"Took {time.process_time() - current_time} seconds")
+# current_time = time.process_time()
+# OCRmyPDFLab().convert(fname)
+# print(f"Took {time.process_time() - current_time} seconds")
